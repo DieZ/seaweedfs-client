@@ -2,6 +2,8 @@
 
 namespace SeaweedFS\Model;
 
+use SeaweedFS\SeaweedFS;
+
 /**
  * Represents a Seaweedfs File
  *
@@ -59,5 +61,9 @@ class File extends Location {
             'url' => $this->url,
             'fid' => $this->fid
         ];
+    }
+
+    public function getMeta(SeaweedFS $client) {
+        $this->meta ?: $client->meta($this->fid);
     }
 }
