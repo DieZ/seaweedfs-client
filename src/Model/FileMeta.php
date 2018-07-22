@@ -15,6 +15,11 @@ class FileMeta {
     public $mimeType;
 
     /**
+     * @var string The file's name.
+     */
+    public $filename;
+
+    /**
      * @var int The file's size.
      */
     public $size;
@@ -30,10 +35,12 @@ class FileMeta {
      * @param $mimeType
      * @param $size
      * @param $modified
+     * @param null|string $filename
      */
-    public function __construct($mimeType, $size, $modified) {
+    public function __construct($mimeType, $size, $modified, $filename = null) {
         $this->mimeType = $mimeType;
         $this->size = $size;
         $this->modified = $modified;
+        $this->filename = $filename;
     }
 }

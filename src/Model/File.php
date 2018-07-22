@@ -24,6 +24,11 @@ class File extends Location {
     public $scheme;
 
     /**
+     * @var FileMeta
+     */
+    public $meta;
+
+    /**
      * File constructor.
      * @param $obj
      * @param string $scheme

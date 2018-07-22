@@ -8,7 +8,8 @@ use SeaweedFS\Model\File;
 use SeaweedFS\Model\FileMeta;
 use SeaweedFS\Model\Volume;
 
-class SeaweedFS {
+class SeaweedFS
+{
     const DIR_ASSIGN = '/dir/assign';
     const DIR_LOOKUP = '/dir/lookup';
 
@@ -39,7 +40,8 @@ class SeaweedFS {
      * @param string $scheme
      * @param CacheInterface|null $cache
      */
-    public function __construct($master, $scheme = 'http', $cache = null) {
+    public function __construct($master, $scheme = 'http', $cache = null)
+    {
         $this->master = $master;
         $this->scheme = $scheme;
         $this->cache = $cache;
@@ -50,7 +52,7 @@ class SeaweedFS {
     /**
      * Get a volume and file id from the master server.
      *
-     * @param int  $count
+     * @param int $count
      * @param string|null $collection
      * @param string|null $replication
      * @param string|null $dataCenter
@@ -58,8 +60,9 @@ class SeaweedFS {
      * @throws SeaweedFSException
      * @see https://github.com/chrislusf/seaweedfs/wiki/Master-Server-API#assign-a-file-key
      */
-    public function assign($count = 1, $collection = null, $replication = null, $dataCenter = null) {
-        $assignProperties = [ 'count' => $count ];
+    public function assign($count = 1, $collection = null, $replication = null, $dataCenter = null)
+    {
+        $assignProperties = ['count' => $count];
 
         if (!is_null($collection)) {
             $assignProperties['collection'] = $collection;
@@ -81,7 +84,7 @@ class SeaweedFS {
             throw new SeaweedFSException('Unexpected response when assigning file: ' . $res->getStatusCode());
         }
 
-        $body = json_decode((string) $res->getBody());
+        $body = json_decode((string)$res->getBody());
 
         return new File($body, $this->scheme);
     }
@@ -93,7 +96,8 @@ class SeaweedFS {
      * @return Volume
      * @throws SeaweedFSException
      */
-    public function lookup($id) {
+    public function lookup($id)
+    {
         if ($pos = strpos($id, ',')) {
             $id = substr($id, 0, $pos);
         }
@@ -111,14 +115,14 @@ class SeaweedFS {
         }
 
         $res = $this->client->get($this->buildMasterUrl(self::DIR_LOOKUP), [
-            'query' => [ 'volumeId' => $id ]
+            'query' => ['volumeId' => $id]
         ]);
 
         if ($res->getStatusCode() != 200) {
             throw new SeaweedFSException('Unexpected response when looking up volume: ' . $res->getStatusCode());
         }
 
-        $body = json_decode((string) $res->getBody());
+        $body = json_decode((string)$res->getBody());
 
         $volume = new Volume($body);
 
@@ -137,10 +141,12 @@ class SeaweedFS {
      * @param resource|string $data The file data, either a string or resource.
      * @param string $filename
      * @param File|null $file A file object to update.
+     * @param array $headers Headers for guzzle multipart.
      * @return File
      * @throws SeaweedFSException
      */
-    public function upload($data, $filename = 'file.txt', $file = null) {
+    public function upload($data, $filename = 'file.txt', $file = null, $headers = [])
+    {
         if (!$file) {
             $file = $this->assign();
         }
@@ -152,9 +158,10 @@ class SeaweedFS {
         $res = $this->client->post($this->buildVolumeUrl($file->url, $file->fid), [
             'multipart' => [
                 [
-                    'name'     => 'file',
+                    'name' => 'file',
                     'filename' => $filename,
-                    'contents' => $data
+                    'contents' => $data,
+                    'headers' => $headers,
                 ]
             ]
         ]);
@@ -163,7 +170,7 @@ class SeaweedFS {
             throw new SeaweedFSException('Unexpected response when storing file: ' . $res->getStatusCode());
         }
 
-        $body = json_decode((string) $res->getBody());
+        $body = json_decode((string)$res->getBody());
 
         $file->size = $body->size;
 
@@ -182,7 +189,8 @@ class SeaweedFS {
      * @return resource
      * @throws SeaweedFSException
      */
-    public function get($fid, $ext = null) {
+    public function get($fid, $ext = null)
+    {
         $volume = $this->lookup($fid);
 
         if (!$volume) {
@@ -210,7 +218,8 @@ class SeaweedFS {
      * @param $fid
      * @return bool
      */
-    public function has($fid) {
+    public function has($fid)
+    {
         try {
             return $this->meta($fid) != null;
         } catch (SeaweedFSException $e) {
@@ -225,14 +234,15 @@ class SeaweedFS {
      * @return FileMeta
      * @throws SeaweedFSException
      */
-    public function meta($fid) {
+    public function meta($fid)
+    {
         $cacheKey = 'file_meta_' . $fid;
 
         if ($this->cache && $this->cache->has($cacheKey)) {
             $val = $this->cache->get($cacheKey);
 
-            if (!$val instanceof FileMeta) {
-                $val = new FileMeta($val);
+            if ($val instanceof FileMeta) {
+                $val = new FileMeta(...$val);
             }
 
             return $val;
@@ -249,11 +259,14 @@ class SeaweedFS {
         if ($res->getStatusCode() != 200) {
             return null;
         }
-
+        // inline; filename="test.file"
+        $contentDisposition = $res->getHeaderLine('Content-Disposition');
+        preg_match('/filename=\"(?P<filename>.+)\"/', $contentDisposition, $matches);
         $meta = new FileMeta(
             $res->getHeaderLine('Content-Type'),
             $res->getHeaderLine('Content-Length'),
-            new \DateTime($res->getHeaderLine('Last-Modified'))
+            new \DateTime($res->getHeaderLine('Last-Modified')),
+            isset($matches['filename']) ? $matches['filename'] : null
         );
 
         if ($this->cache) {
@@ -270,7 +283,8 @@ class SeaweedFS {
      * @return bool
      * @throws SeaweedFSException
      */
-    public function delete($fid) {
+    public function delete($fid)
+    {
         $volume = $this->lookup($fid);
 
         if (!$volume) {
@@ -296,7 +310,8 @@ class SeaweedFS {
      * @param $path
      * @return string
      */
-    public function buildMasterUrl($path = null) {
+    public function buildMasterUrl($path = null)
+    {
         return sprintf('%s://%s/%s', $this->scheme, $this->master, $path ? ltrim($path, '/') : '');
     }
 
@@ -307,7 +322,8 @@ class SeaweedFS {
      * @param null $path
      * @return string
      */
-    public function buildVolumeUrl($host, $path = null) {
+    public function buildVolumeUrl($host, $path = null)
+    {
         return sprintf('%s://%s/%s', $this->scheme, $host, $path ? ltrim($path, '/') : '');
     }
 }
