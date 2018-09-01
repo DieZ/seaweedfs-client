@@ -241,7 +241,7 @@ class SeaweedFS
         if ($this->cache && $this->cache->has($cacheKey)) {
             $val = $this->cache->get($cacheKey);
 
-            if ($val instanceof FileMeta) {
+            if (!$val instanceof FileMeta && is_array($val) ) {
                 $val = new FileMeta(...$val);
             }
 
