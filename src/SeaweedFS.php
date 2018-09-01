@@ -312,6 +312,9 @@ class SeaweedFS
      */
     public function buildMasterUrl($path = null)
     {
+        if( null !== parse_url($this->master,PHP_URL_SCHEME)){
+            return sprintf('%s/%s', $this->master, $path ? ltrim($path, '/') : '');
+        }
         return sprintf('%s://%s/%s', $this->scheme, $this->master, $path ? ltrim($path, '/') : '');
     }
 
@@ -324,6 +327,9 @@ class SeaweedFS
      */
     public function buildVolumeUrl($host, $path = null)
     {
+        if( null !== parse_url($host,PHP_URL_SCHEME)){
+            return sprintf('%s/%s', $host, $path ? ltrim($path, '/') : '');
+        }
         return sprintf('%s://%s/%s', $this->scheme, $host, $path ? ltrim($path, '/') : '');
     }
 }
